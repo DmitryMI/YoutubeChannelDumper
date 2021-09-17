@@ -7,19 +7,19 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using VideoLibrary;
 using YoutubeExplode;
-using YoutubeExplode.Models;
-using YoutubeExplode.Models.MediaStreams;
-using Video = VideoLibrary.Video;
+using YoutubeExplode.Channels;
+using YoutubeExplode.Playlists;
+using YoutubeExplode.Videos;
+using YoutubeExplode.Videos.Streams;
 
 namespace YoutubeChannelDumper
 {
     public class YouHandler
     {
-        private YoutubeExplode.YoutubeClient _client;
+        private YoutubeClient _client;
 
-        private IReadOnlyList<YoutubeExplode.Models.Video> _videos;
+        private IReadOnlyList<Video> _videos;
 
         private ILogger _logger;
         private IProgressReporter _progressReporter;
@@ -36,7 +36,7 @@ namespace YoutubeChannelDumper
         public class FileDownloadingInfo
         {
             public string Name { get; set; }
-            public MediaStreamInfo StreamInfo {get; set; }
+            public IStreamInfo StreamInfo {get; set; }
         }
 
         public YouHandler()
@@ -46,7 +46,7 @@ namespace YoutubeChannelDumper
 
         public void LoadChannelContentByName(string username)
         {
-            LoadContents(username);
+            LoadContentsAsync(username);
         }
 
         public void LoadChannelContentByLink(string channelId)
@@ -55,26 +55,40 @@ namespace YoutubeChannelDumper
             //LoadContents(username);
         }
 
+        public async ValueTask<Video> GetVideoByLink(string link)
+        {
+            VideoId videoId = VideoId.Parse(link);
+            var valueTask = _client.Videos.GetAsync(videoId);
+            await valueTask;
+            Video video = valueTask.Result;
+            return video;
+        }
+
         private void LoadContentsById(string channelId)
         {
             //string channelId = YoutubeClient.ParseChannelId(channelLink);
             try
             {
-                //Task<string> channelIdTask = _client.GetChannelIdAsync(username);
+                ChannelId channelIdStruct = ChannelId.Parse(channelId);
+                Channel channel = _client.Channels.GetAsync(channelIdStruct).Result;
 
-                //string channelId = channelIdTask.Result;
+                //string playlistId = channel.GetChannelVideosPlaylistId();
+                var videos = _client.Channels.GetUploadsAsync(channel.Id);
+                List<Video> playlistVideos = new List<Video>();
+                IAsyncEnumerator<PlaylistVideo> enumerator = videos.GetAsyncEnumerator();
 
-                Task<Channel> channelTask = _client.GetChannelAsync(channelId);
+                while (true)
+                {
+                    PlaylistVideo playlistVideo = enumerator.Current;
+                    playlistVideos.Add(_client.Videos.GetAsync(playlistVideo.Id).Result);
+                    ValueTask<bool> next = enumerator.MoveNextAsync();
+                    if (!next.Result)
+                    {
+                        break;
+                    }
+                }
 
-                Channel channel = channelTask.Result;
-
-                string playlistId = channel.GetChannelVideosPlaylistId();
-
-                Task<Playlist> playlistTask = _client.GetPlaylistAsync(playlistId);
-
-                Playlist playlist = playlistTask.Result;
-
-                _videos = playlist.Videos;
+                _videos = playlistVideos;
             }
             catch (Exception e)
             {
@@ -85,26 +99,30 @@ namespace YoutubeChannelDumper
             }
         }
 
-        private void LoadContents(string username)
+        private async Task LoadContentsAsync(string username)
         {
             //string channelId = YoutubeClient.ParseChannelId(channelLink);
             try
             {
-                Task<string> channelIdTask = _client.GetChannelIdAsync(username);
+                Channel channel = _client.Channels.GetByUserAsync(username).Result;
 
-                string channelId = channelIdTask.Result;
+                //string playlistId = channel.GetChannelVideosPlaylistId();
+                var videos = _client.Channels.GetUploadsAsync(channel.Id);                
+                List<Video> playlistVideos = new List<Video>();
+                IAsyncEnumerator<PlaylistVideo> enumerator = videos.GetAsyncEnumerator();
+                
+                while(true)
+                {
+                    PlaylistVideo playlistVideo = enumerator.Current;
+                    playlistVideos.Add(_client.Videos.GetAsync(playlistVideo.Id).Result);
+                    ValueTask<bool> next = enumerator.MoveNextAsync();
+                    if(!next.Result)
+                    {
+                        break;
+                    }
+                }
 
-                Task<Channel> channelTask = _client.GetChannelAsync(channelId);
-
-                Channel channel = channelTask.Result;
-
-                string playlistId = channel.GetChannelVideosPlaylistId();
-
-                Task<Playlist> playlistTask = _client.GetPlaylistAsync(playlistId);
-
-                Playlist playlist = playlistTask.Result;
-
-                _videos = playlist.Videos;
+                _videos = playlistVideos;
             }
             catch (Exception e)
             {
@@ -115,14 +133,14 @@ namespace YoutubeChannelDumper
             }
         }
 
-        public IReadOnlyList<YoutubeExplode.Models.Video> GetVideos()
+        public IReadOnlyList<Video> GetVideos()
         {
             return _videos;
         }
 
-        public List<FileDownloadingInfo> RequestVideoDownloading(IList<YoutubeExplode.Models.Video> videos, string directory, DownloadQuality quality, string audioExt)
+        public async Task<List<FileDownloadingInfo>> RequestVideoDownloadingAsync(IList<Video> videos, string directory, DownloadQuality quality, string audioExt)
         {
-            return InitDownloading(videos, directory, quality, audioExt);
+            return await InitDownloadingAsync(videos, directory, quality, audioExt);
         }
 
         private static string RemoveProhibitedChars(string path)
@@ -135,7 +153,7 @@ namespace YoutubeChannelDumper
             return path;
         }
 
-        private List<FileDownloadingInfo> InitDownloading(IList<YoutubeExplode.Models.Video> videos, string directory, DownloadQuality quality, string audioExtForced)
+        private async Task<List<FileDownloadingInfo>> InitDownloadingAsync(IList<Video> videos, string directory, DownloadQuality quality, string audioExtForced)
         {
             List < FileDownloadingInfo > result = new List<FileDownloadingInfo>();
 
@@ -152,9 +170,8 @@ namespace YoutubeChannelDumper
             {
                 try
                 {
-                    Task<MediaStreamInfoSet> streamInfoTask = _client.GetVideoMediaStreamInfosAsync(vid.Id);
-
-                    MediaStreamInfoSet infoSet = streamInfoTask.Result;
+                    
+                    StreamManifest infoSet = await _client.Videos.Streams.GetManifestAsync(vid.Id);
 
                     string vidTitle = RemoveProhibitedChars(vid.Title);
 
@@ -163,9 +180,10 @@ namespace YoutubeChannelDumper
                         case DownloadQuality.Default:
                         case DownloadQuality.MuxedBest:
 
-                            IReadOnlyList<MuxedStreamInfo> muxedStreams = infoSet.Muxed;
-                            MuxedStreamInfo muxedHighestQuality = muxedStreams.WithHighestVideoQuality();
-                            string ext = muxedHighestQuality.Container.GetFileExtension();
+                            IEnumerable<MuxedStreamInfo> muxedStreams = infoSet.GetMuxedStreams();
+                            IVideoStreamInfo muxedHighestQuality = muxedStreams.GetWithHighestVideoQuality();
+                            string ext = muxedHighestQuality.Container.Name;
+                            //string ext = "mkv";
                             string path = directory + "/" + vidTitle + "." + ext;
 
                             var file = new FileDownloadingInfo() {Name = vidTitle, StreamInfo = muxedHighestQuality};
@@ -175,16 +193,16 @@ namespace YoutubeChannelDumper
 
                         case DownloadQuality.SeparateBest:
 
-                            IReadOnlyList<VideoStreamInfo> videoStreams = infoSet.Video;
-                            IReadOnlyList<AudioStreamInfo> audioStreams = infoSet.Audio;
-                            AudioStreamInfo highestBitRate = audioStreams.WithHighestBitrate();
-                            VideoStreamInfo videoHighestQuality = videoStreams.WithHighestVideoQuality();
+                            IEnumerable<IVideoStreamInfo> videoStreams = infoSet.GetVideoStreams();
+                            IEnumerable<IAudioStreamInfo> audioStreams = infoSet.GetAudioStreams();
+                            IStreamInfo highestBitRate = audioStreams.GetWithHighestBitrate();
+                            IStreamInfo videoHighestQuality = videoStreams.GetWithHighestVideoQuality();
 
-                            string extVideo = videoHighestQuality.Container.GetFileExtension();
+                            string extVideo = videoHighestQuality.Container.Name;
 
                             string pathVideo = directory + "/" + vidTitle + "." + extVideo;
 
-                            string extAudio = highestBitRate.Container.GetFileExtension();
+                            string extAudio = highestBitRate.Container.Name;
                             string pathAudio = directory + "/" + vidTitle + "." + extAudio;
 
                             if (audioExtForced == String.Empty)
@@ -250,7 +268,7 @@ namespace YoutubeChannelDumper
             _progressReporter = reporter;
         }
 
-        private void InitStreamDownloading(FileDownloadingInfo streamDownloadingInfoInfo, string path, YoutubeExplode.Models.Video video)
+        private void InitStreamDownloading(FileDownloadingInfo streamDownloadingInfoInfo, string path, Video video)
         {
             IProgress<double> progress;
             if(_progressReporter == null)
@@ -260,7 +278,7 @@ namespace YoutubeChannelDumper
                 progress = new BaredProgress(_progressReporter, streamDownloadingInfoInfo);
             }
 
-            var downloadingTask = _client.DownloadMediaStreamAsync(streamDownloadingInfoInfo.StreamInfo, path, progress);
+            var downloadingTask = _client.Videos.Streams.DownloadAsync(streamDownloadingInfoInfo.StreamInfo, path, progress);
         }
 
         class Progress : IProgress<double>

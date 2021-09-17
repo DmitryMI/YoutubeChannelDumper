@@ -34,7 +34,7 @@
             this.ProcessChannel = new System.Windows.Forms.Button();
             this.SelectAllButton = new System.Windows.Forms.Button();
             this.DeselectButton = new System.Windows.Forms.Button();
-            this.DownloadButton = new System.Windows.Forms.Button();
+            this.DownloadSelectedButton = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.DownloadPathBox = new System.Windows.Forms.TextBox();
             this.LogBox = new System.Windows.Forms.RichTextBox();
@@ -43,10 +43,14 @@
             this.ChangeExtBox = new System.Windows.Forms.CheckBox();
             this.ClearLogButton = new System.Windows.Forms.Button();
             this.AltProceedButton = new System.Windows.Forms.Button();
+            this.label3 = new System.Windows.Forms.Label();
+            this.DirectLinkBox = new System.Windows.Forms.TextBox();
+            this.DownloadVideoButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // VideoListBox
             // 
+            this.VideoListBox.HideSelection = false;
             this.VideoListBox.Location = new System.Drawing.Point(12, 12);
             this.VideoListBox.Name = "VideoListBox";
             this.VideoListBox.Size = new System.Drawing.Size(394, 597);
@@ -100,20 +104,20 @@
             this.DeselectButton.UseVisualStyleBackColor = true;
             this.DeselectButton.Click += new System.EventHandler(this.DeselectButton_Click);
             // 
-            // DownloadButton
+            // DownloadSelectedButton
             // 
-            this.DownloadButton.Location = new System.Drawing.Point(721, 88);
-            this.DownloadButton.Name = "DownloadButton";
-            this.DownloadButton.Size = new System.Drawing.Size(75, 23);
-            this.DownloadButton.TabIndex = 6;
-            this.DownloadButton.Text = "Download";
-            this.DownloadButton.UseVisualStyleBackColor = true;
-            this.DownloadButton.Click += new System.EventHandler(this.DownloadButton_Click);
+            this.DownloadSelectedButton.Location = new System.Drawing.Point(721, 124);
+            this.DownloadSelectedButton.Name = "DownloadSelectedButton";
+            this.DownloadSelectedButton.Size = new System.Drawing.Size(114, 23);
+            this.DownloadSelectedButton.TabIndex = 6;
+            this.DownloadSelectedButton.Text = "Download Selected";
+            this.DownloadSelectedButton.UseVisualStyleBackColor = true;
+            this.DownloadSelectedButton.Click += new System.EventHandler(this.DownloadButton_Click);
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(413, 71);
+            this.label2.Location = new System.Drawing.Point(413, 107);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(32, 13);
             this.label2.TabIndex = 8;
@@ -121,7 +125,7 @@
             // 
             // DownloadPathBox
             // 
-            this.DownloadPathBox.Location = new System.Drawing.Point(412, 90);
+            this.DownloadPathBox.Location = new System.Drawing.Point(412, 126);
             this.DownloadPathBox.Name = "DownloadPathBox";
             this.DownloadPathBox.Size = new System.Drawing.Size(303, 20);
             this.DownloadPathBox.TabIndex = 7;
@@ -129,10 +133,10 @@
             // LogBox
             // 
             this.LogBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.LogBox.Location = new System.Drawing.Point(416, 116);
+            this.LogBox.Location = new System.Drawing.Point(416, 153);
             this.LogBox.Name = "LogBox";
             this.LogBox.ReadOnly = true;
-            this.LogBox.Size = new System.Drawing.Size(694, 522);
+            this.LogBox.Size = new System.Drawing.Size(694, 485);
             this.LogBox.TabIndex = 9;
             this.LogBox.Text = "";
             // 
@@ -190,11 +194,40 @@
             this.AltProceedButton.UseVisualStyleBackColor = true;
             this.AltProceedButton.Click += new System.EventHandler(this.AltProceedButton_Click);
             // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(413, 65);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(61, 13);
+            this.label3.TabIndex = 17;
+            this.label3.Text = "Direct Link:";
+            // 
+            // DirectLinkBox
+            // 
+            this.DirectLinkBox.Location = new System.Drawing.Point(412, 84);
+            this.DirectLinkBox.Name = "DirectLinkBox";
+            this.DirectLinkBox.Size = new System.Drawing.Size(303, 20);
+            this.DirectLinkBox.TabIndex = 16;
+            // 
+            // DownloadVideoButton
+            // 
+            this.DownloadVideoButton.Location = new System.Drawing.Point(721, 82);
+            this.DownloadVideoButton.Name = "DownloadVideoButton";
+            this.DownloadVideoButton.Size = new System.Drawing.Size(114, 23);
+            this.DownloadVideoButton.TabIndex = 18;
+            this.DownloadVideoButton.Text = "Download Video";
+            this.DownloadVideoButton.UseVisualStyleBackColor = true;
+            this.DownloadVideoButton.Click += new System.EventHandler(this.DownloadVideoButton_ClickAsync);
+            // 
             // YoutubeBrowser
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1122, 650);
+            this.Controls.Add(this.DownloadVideoButton);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.DirectLinkBox);
             this.Controls.Add(this.AltProceedButton);
             this.Controls.Add(this.ClearLogButton);
             this.Controls.Add(this.ChangeExtBox);
@@ -203,7 +236,7 @@
             this.Controls.Add(this.LogBox);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.DownloadPathBox);
-            this.Controls.Add(this.DownloadButton);
+            this.Controls.Add(this.DownloadSelectedButton);
             this.Controls.Add(this.DeselectButton);
             this.Controls.Add(this.SelectAllButton);
             this.Controls.Add(this.ProcessChannel);
@@ -226,7 +259,7 @@
         private System.Windows.Forms.Button ProcessChannel;
         private System.Windows.Forms.Button SelectAllButton;
         private System.Windows.Forms.Button DeselectButton;
-        private System.Windows.Forms.Button DownloadButton;
+        private System.Windows.Forms.Button DownloadSelectedButton;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox DownloadPathBox;
         private System.Windows.Forms.RichTextBox LogBox;
@@ -235,6 +268,9 @@
         private System.Windows.Forms.CheckBox ChangeExtBox;
         private System.Windows.Forms.Button ClearLogButton;
         private System.Windows.Forms.Button AltProceedButton;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.TextBox DirectLinkBox;
+        private System.Windows.Forms.Button DownloadVideoButton;
     }
 }
 

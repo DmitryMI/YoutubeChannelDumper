@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
-using YoutubeExplode.Models;
+using YoutubeExplode.Videos;
 
 namespace YoutubeChannelDumper
 {
@@ -40,6 +40,11 @@ namespace YoutubeChannelDumper
             {
                 _youHandler.LoadChannelContentByName(link);
                 var list = _youHandler.GetVideos();
+
+                if(list == null)
+                {
+                    throw new Exception("Unknown exception");
+                }
 
                 foreach (Video video in list)
                 {
@@ -83,10 +88,42 @@ namespace YoutubeChannelDumper
 
         private void DownloadButton_Click(object sender, EventArgs e)
         {
-            SendDownloadRequest();
+            SendDownloadRequestAsync();
         }
 
-        private void SendDownloadRequest()
+        private async Task SendDownloadRequestAsync(string link)
+        {
+            Video video = await _youHandler.GetVideoByLink(link);            
+
+            WriteLog("Initializing downloading...");
+
+            string folder = DownloadPathBox.Text;
+
+            YouHandler.DownloadQuality quality = YouHandler.DownloadQuality.Default;
+
+            if (MuxedBestButton.Checked)
+            {
+                WriteLog("Quality: " + MuxedBestButton.Text);
+                quality = YouHandler.DownloadQuality.MuxedBest;
+            }
+
+            if (SeparateBestButt.Checked)
+            {
+                WriteLog("Quality: " + SeparateBestButt.Text);
+                quality = YouHandler.DownloadQuality.SeparateBest;
+            }
+
+
+            string ext = "";
+            if (ChangeExtBox.Checked)
+                ext = "m4a";
+
+            var result = await _youHandler.RequestVideoDownloadingAsync(new List<Video>() { video }, folder, quality, ext);
+
+            CreateProgressReportHandler(result);
+        }
+
+        private async Task SendDownloadRequestAsync()
         {
             List<Video> selectedVideos = GetSelectedVideos();
 
@@ -120,7 +157,7 @@ namespace YoutubeChannelDumper
             if (ChangeExtBox.Checked)
                 ext = "m4a";
 
-            var result = _youHandler.RequestVideoDownloading(selectedVideos, folder, quality, ext);
+            var result = await _youHandler.RequestVideoDownloadingAsync(selectedVideos, folder, quality, ext);
 
             CreateProgressReportHandler(result);
         }
@@ -263,6 +300,10 @@ namespace YoutubeChannelDumper
             {
                 _youHandler.LoadChannelContentByLink(link);
                 var list = _youHandler.GetVideos();
+                if(list == null)
+                {
+                    throw new Exception("Unknown exception");
+                }
 
                 foreach (Video video in list)
                 {
@@ -273,6 +314,15 @@ namespace YoutubeChannelDumper
             {
                 WriteLog(ex.Message);
             }
+        }
+
+        private void DownloadVideoButton_ClickAsync(object sender, EventArgs e)
+        {
+            _youHandler = new YouHandler();
+            _youHandler.SetLogger(this);
+            _youHandler.SetProgressReporter(this);
+
+            SendDownloadRequestAsync(DirectLinkBox.Text);
         }
     }
 }
